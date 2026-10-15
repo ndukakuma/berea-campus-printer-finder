@@ -63,15 +63,16 @@
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden select-none">
 
   <header class="bg-[#003366] text-white px-4 sm:px-6 py-2.5 shadow-md flex items-center justify-between gap-3 z-30 shrink-0 border-b border-blue-900">
-    <div class="flex items-center gap-3.5">
-      <div class="bg-white rounded-xl p-1 shadow-sm border border-blue-200/40 flex items-center justify-center shrink-0">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center justify-center shrink-0">
         <img
-          src="Berea College Print Mail Design Logo.png"
-          alt="Berea College Print, Mail & Design"
-          class="h-11 w-auto object-contain"
-          onerror="this.onerror=null; this.src='https://placehold.co/120x48/ffffff/003366?text=BC+Print';"
+          src="BCLogoWhite.png"
+          alt="Berea College"
+          class="h-10 sm:h-11 w-auto object-contain"
+          onerror="this.onerror=null; this.src='https://placehold.co/130x44/003366/ffffff?text=BEREA+COLLEGE';"
         />
       </div>
+      <div class="h-7 w-[1px] bg-white/20 hidden sm:block"></div>
       <div>
         <h1 class="font-bold text-base sm:text-lg tracking-tight leading-tight">Find a Campus Printer</h1>
         <p class="text-xs text-sky-200 font-medium">Berea College Print, Mail &amp; Design • Student &amp; Staff Directory</p>
@@ -379,7 +380,6 @@
     let capabilityFilter = "all"; // 'all' | 'color' | 'mfp'
     let expandedBuildings = new Set();
 
-    // Automatically pick up any coordinates or printer updates saved in the Admin Manager on the same browser
     try {
       const savedBlds = localStorage.getItem(LOCAL_STORAGE_BUILDINGS_KEY);
       if (savedBlds) buildings = { ...BUILDING_COORDS, ...JSON.parse(savedBlds) };
@@ -392,7 +392,6 @@
       console.warn("Using default campus printer dataset:", e);
     }
 
-    // Also listen for real-time updates from Firestore if available
     async function subscribeToLiveAdminUpdates() {
       try {
         if (typeof __firebase_config === "undefined" || !__firebase_config) return;
@@ -503,7 +502,6 @@
     }
 
     function getActivePrinters() {
-      // Only show Active printers to end users (hide Storage, Offline, Missing)
       return printers.filter((p) => {
         const s = (p.status || "Active").toLowerCase();
         const r = (p.room || "").toLowerCase();
@@ -620,7 +618,6 @@
       const suggestions = [];
       const seenKeys = new Set();
 
-      // 1. Predict matching buildings first (starts-with prioritized, then contains)
       const bldNames = Object.keys(buildings).sort((a, b) => {
         const aStarts = a.toLowerCase().startsWith(q) ? 0 : 1;
         const bStarts = b.toLowerCase().startsWith(q) ? 0 : 1;
@@ -644,7 +641,6 @@
         }
       });
 
-      // 2. Predict matching print queues and rooms
       activeList.forEach((p) => {
         const cleanQ = cleanQueueName(p.queue);
         const room = p.room || "";
@@ -702,7 +698,6 @@
           .join("");
         predBox.classList.remove("hidden");
 
-        // Smoothly pan the map over to the top predicted building's printer dot as the user types
         const topBuilding = topSuggestions[0].building;
         if (topBuilding && lastPannedBuilding !== topBuilding) {
           focusBuildingOnMap(topBuilding);
@@ -722,7 +717,6 @@
       renderDirectory();
     };
 
-    // Normalize building names so any slight naming variation always resolves to exact campus coordinates
     function getBuildingInfo(bName) {
       if (!bName) return null;
       if (buildings[bName] && typeof buildings[bName].lat === "number") {
@@ -753,7 +747,6 @@
       map.invalidateSize();
       map.closePopup();
 
-      // Fly directly to the exact center of the visible map area, then open popup without autoPan shifting the dot off-center
       map.flyTo(targetLatLng, 18, { animate: true, duration: 0.55 });
 
       if (marker) {
@@ -982,7 +975,6 @@
           </div>
         `;
 
-        // Disable autoPan on popup so opening a tall popup never pushes the building dot off the center of the map
         const marker = L.marker([bInfo.lat, bInfo.lng], { icon }).bindPopup(popupHtml, {
           maxWidth: 320,
           autoPan: false
@@ -1067,6 +1059,14 @@
         toast.style.opacity = "0";
         setTimeout(() => toast.remove(), 300);
       }, 2800);
+    }
+
+    // Ensure Leaflet recalculates map container dimensions after asynchronous styles/fonts load on GitHub Pages
+    window.addEventListener("load", () => {
+      setTimeout(() => map.invalidateSize(), 250);
+    });
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById("map"));
     }
 
     populateBuildingDropdown();
